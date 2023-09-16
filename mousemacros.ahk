@@ -7,6 +7,11 @@ SetWorkingDir %A_ScriptDir%
 SetTitleMatchMode, 2
 CoordMode, Mouse, Window
 
+#include %A_ScriptDir%\lib\ComputerInfos.ahk
+resolution := getDislplayResolutionString()
+
+recordingsDir := A_ScriptDir "\recordings\" resolution
+
 DELAY_TIME = 100
 SetTimer, WatchKeys, %DELAY_TIME%
 
@@ -14,7 +19,8 @@ if (!a_iscompiled) {
 	Menu, tray, icon, icon.ico,0,1
 }
 
-!+F1::
+
+^+9::
     if (!Recording) {
         Recording := true
         Actions := []
@@ -33,12 +39,12 @@ if (!a_iscompiled) {
         InputBox, RecordingName, Save Recording, Enter a name for the recording:
         if (RecordingName) {
             FormatTime, RecordingTime,, yyyy-MM-dd_HH-mm-ss
-            IfNotExist, recordings\%ActiveWindowTitle%
-                FileCreateDir, recordings\%ActiveWindowTitle%
-            FileAppend, % "Active Window: " ActiveWindowTitle "`n", % "recordings\" ActiveWindowTitle "\" RecordingName ".txt"
-            FileAppend, % "Start Time: " StartTime "`n", % "recordings\" ActiveWindowTitle "\" RecordingName ".txt"
+            IfNotExist, %recordingsDir%\%ActiveWindowTitle%
+                FileCreateDir, %recordingsDir%\%ActiveWindowTitle%
+            FileAppend, % "Active Window: " ActiveWindowTitle "`n", % recordingsDir "\" ActiveWindowTitle "\" RecordingName ".txt"
+            FileAppend, % "Start Time: " StartTime "`n", % recordingsDir "\" ActiveWindowTitle "\" RecordingName ".txt"
             Loop % Actions.Length()
-                FileAppend, % Actions[A_Index] "`n", % "recordings\" ActiveWindowTitle "\" RecordingName ".txt"
+                FileAppend, % Actions[A_Index] "`n", % recordingsDir "\" ActiveWindowTitle "\" RecordingName ".txt"
             ToolTip, Recording saved as %RecordingName%.txt
             Sleep, 1000
             ToolTip
@@ -50,19 +56,20 @@ if (!a_iscompiled) {
     }
 return
 
-!+F2::
+^+0::
     WinGetTitle, ActiveWindowTitle, A
     FileNames := []
     FilePaths := {}
 
     ; Loop through all subfolders in the recordings directory
-    Loop, %A_ScriptDir%\recordings\*, 2D
+    ;M sgBox, %recordingsDir%
+    Loop, %recordingsDir%\*, 2D
     {
         ; Check if the folder name exists within the current window title
         If InStr(ActiveWindowTitle, A_LoopFileName)
         {
             ; If match is found, loop through the files in that folder
-            Loop, Files, %A_ScriptDir%\recordings\%A_LoopFileName%\*.txt
+            Loop, Files, %recordingsDir%\%A_LoopFileName%\*.txt
             {
                 FileRead, FileContent, %A_LoopFileLongPath%                
                 FileNames.Push(A_LoopFileName)  ; This is for the UI
