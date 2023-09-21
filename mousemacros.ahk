@@ -88,8 +88,26 @@ return
         InputBox, SelectedFileIndex, Select Recording, Choose a recording to execute:`n`n%FileListStr%
 
         If (SelectedFileIndex) {
-            SelectedFile := FilePaths[SelectedFileIndex]
-            RunRecording(ActiveWindowTitle, SelectedFile)
+            ; Assuming SelectedFileIndex contains something like "5r" or "7"
+            if SelectedFileIndex contains r
+            {
+                StringReplace, digitPart, SelectedFileIndex, r, , All
+                letterPart := "r"
+            }
+            else
+            {
+                digitPart := SelectedFileIndex
+                letterPart := ""
+            }
+
+            if letterPart = r
+                reverse := true
+            else
+                reverse := false
+
+            filePath := FilePaths[digitPart]
+
+            RunRecording(filePath, reverse)
         }
     } else {
         MsgBox, No recordings found for this window.
@@ -124,44 +142,80 @@ WatchKeys:
     }
 return
 
-RunRecording(ActiveWindowTitle, filePath) {
+RunRecording(filePath, reverse := false) {
     ;filePath = %A_ScriptDir%\recordings\%ActiveWindowTitle%\%RecordingName%
     ;M sgBox, %filePath%
     FileRead, RecordingContent, %filePath%
 
-    Loop, Parse, RecordingContent, `n
+    ; Split the content into an array based on new lines
+    LinesArray := StrSplit(RecordingContent, "`n", "`r")
+
+    ; Get the first line of the array
+    ActiveWindowInfo := LinesArray[1]
+    ActiveWindowInfo := StrSplit(ActiveWindowInfo, ": ")
+    ActiveWindowTitle := ActiveWindowInfo[2]
+    ActiveWindowTitle := RegExReplace(ActiveWindowTitle, "\v\s?", "")
+    IfWinExist, %ActiveWindowTitle%
+        WinActivate
+    else
+        MsgBox, 16, Error, Window >%ActiveWindowTitle%< not found.
+
+    ; Loop over each line starting from the second line
+    if (reverse = true)  ; Loop in reverse
     {
-        IfInString, A_LoopField, Active Window
+        Loop, % LinesArray.MaxIndex()
         {
-            ActiveWindowInfo := StrSplit(A_LoopField, ": ")
-            ActiveWindowTitle := ActiveWindowInfo[2]
-            ActiveWindowTitle := RegExReplace(ActiveWindowTitle, "\v\s?", "")
-            IfWinExist, %ActiveWindowTitle%
-                WinActivate
-            else
-                MsgBox, 16, Error, Window >%ActiveWindowTitle%< not found.
+            CurrentIndex := LinesArray.MaxIndex() - A_Index + 1
+            CurrentLine := LinesArray[CurrentIndex]
+            HandleCommand(CurrentLine, reverse)
         }
-        IfInString, A_LoopField, MouseMove
+    }
+    else  ; Loop in normal order
+    {
+        Loop, % LinesArray.MaxIndex()
         {
-            MouseMoveInfo := StrSplit(A_LoopField, A_Space)
-            MouseMove, % MouseMoveInfo[2], % MouseMoveInfo[3], 1, 
+            CurrentLine := LinesArray[A_Index]
+            HandleCommand(CurrentLine, reverse)
         }
-        IfInString, A_LoopField, MouseDownLeft
+    }
+}
+
+HandleCommand(CurrentLine, reverse := false) {
+    ; Do something with the current line
+    IfInString, CurrentLine, MouseMove
+    {
+        MouseMoveInfo := StrSplit(CurrentLine, A_Space)
+        MouseMove, % MouseMoveInfo[2], % MouseMoveInfo[3], 1, 
+    }
+    IfInString, CurrentLine, MouseDownLeft
+    {
+        if reverse = 1
+            Click, up
+        else 
+            Click, down
+    }
+    IfInString, CurrentLine, MouseDownRight
+    {
+        if reverse = 1
+            Click, right, up
+        else
+            Click, right, down
+    }
+    IfInString, CurrentLine, MouseUpLeft
+    {
+        if reverse = 1
         {
             Click, down
         }
-        IfInString, A_LoopField, MouseDownRight
-        {
-            Click, right, down
-        }
-        IfInString, A_LoopField, MouseUpLeft
-        {
-            Click, up
-        }
-        IfInString, A_LoopField, MouseUpRight
-        {
-            Click, right, up
-        }
-        ;Sleep, %DELAY_TIME%
+        else
+           Click, up
     }
+    IfInString, CurrentLine, MouseUpRight
+    {
+        if reverse = 1
+            Click, right, down
+        else
+            Click, right, up
+    }
+    ;Sleep, %DELAY_TIME%    
 }
