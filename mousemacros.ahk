@@ -178,6 +178,8 @@ RunRecording(filePath, reverse := false) {
             HandleCommand(CurrentLine, reverse)
         }
     }
+    Click, up
+    Click, right, up
 }
 
 HandleCommand(CurrentLine, reverse := false) {
@@ -193,6 +195,7 @@ HandleCommand(CurrentLine, reverse := false) {
             Click, up
         else 
             Click, down
+        Sleep, 100
     }
     IfInString, CurrentLine, MouseDownRight
     {
@@ -200,6 +203,8 @@ HandleCommand(CurrentLine, reverse := false) {
             Click, right, up
         else
             Click, right, down
+        
+        Sleep, 100
     }
     IfInString, CurrentLine, MouseUpLeft
     {
@@ -209,6 +214,7 @@ HandleCommand(CurrentLine, reverse := false) {
         }
         else
            Click, up
+        Sleep, 100
     }
     IfInString, CurrentLine, MouseUpRight
     {
@@ -216,6 +222,7 @@ HandleCommand(CurrentLine, reverse := false) {
             Click, right, down
         else
             Click, right, up
+        Sleep, 100
     }
     ;Sleep, %DELAY_TIME%    
 }
