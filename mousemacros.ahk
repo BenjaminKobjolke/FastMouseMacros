@@ -85,7 +85,7 @@ return
         Loop % FileNames.Length()
             FileListStr .= FileIndex++ ". " FileNames[A_Index] "`n"
 
-        InputBox, SelectedFileIndex, Select Recording, Choose a recording to execute:`n`n%FileListStr%
+        InputBox, SelectedFileIndex, Select Recording , Choose a recording to execute:`n`n%FileListStr%, , , 500
 
         If (SelectedFileIndex) {
             ; Assuming SelectedFileIndex contains something like "5r" or "7"
@@ -145,6 +145,10 @@ return
 RunRecording(filePath, reverse := false) {
     ;filePath = %A_ScriptDir%\recordings\%ActiveWindowTitle%\%RecordingName%
     ;M sgBox, %filePath%
+    ; save current mouse position
+    leftMouseDown := 0
+    rightMouseDown := 0
+    MouseGetPos, xpos, ypos 
     FileRead, RecordingContent, %filePath%
 
     ; Split the content into an array based on new lines
@@ -167,7 +171,15 @@ RunRecording(filePath, reverse := false) {
         {
             CurrentIndex := LinesArray.MaxIndex() - A_Index + 1
             CurrentLine := LinesArray[CurrentIndex]
-            HandleCommand(CurrentLine, reverse)
+            returnValue := HandleCommand(CurrentLine, reverse)
+            if returnValue = 1
+                leftMouseDown := 1
+            else if returnValue = 2
+                rightMouseDown := 1
+            else if returnValue = 3
+                leftMouseDown := 0
+            else if returnValue = 4
+                rightMouseDown := 0
         }
     }
     else  ; Loop in normal order
@@ -175,14 +187,26 @@ RunRecording(filePath, reverse := false) {
         Loop, % LinesArray.MaxIndex()
         {
             CurrentLine := LinesArray[A_Index]
-            HandleCommand(CurrentLine, reverse)
+            returnValue := HandleCommand(CurrentLine, reverse)
+            if returnValue = 1
+                leftMouseDown := 1
+            else if returnValue = 2
+                rightMouseDown := 1
+            else if returnValue = 3
+                leftMouseDown := 0
+            else if returnValue = 4
+                rightMouseDown := 0
         }
     }
-    Click, up
-    Click, right, up
+    if leftMouseDown = 1
+        Click, up
+    if rightMouseDown = 1
+        Click, right, up
+    MouseMove, %xpos%, %ypos%
 }
 
 HandleCommand(CurrentLine, reverse := false) {
+    returnValue := 0
     ; Do something with the current line
     IfInString, CurrentLine, MouseMove
     {
@@ -192,17 +216,29 @@ HandleCommand(CurrentLine, reverse := false) {
     IfInString, CurrentLine, MouseDownLeft
     {
         if reverse = 1
+        {
+            returnValue := 1
             Click, up
-        else 
+        }
+        else
+        {
+            returnValue := 3 
             Click, down
+        }
         Sleep, 100
     }
     IfInString, CurrentLine, MouseDownRight
     {
         if reverse = 1
+        {
+            returnValue := 2
             Click, right, up
+        }
         else
+        {
+            returnValue := 4
             Click, right, down
+        }
         
         Sleep, 100
     }
@@ -210,19 +246,30 @@ HandleCommand(CurrentLine, reverse := false) {
     {
         if reverse = 1
         {
+            returnValue := 1
             Click, down
         }
         else
-           Click, up
+        {
+            returnValue := 3
+            Click, up
+        }
         Sleep, 100
     }
     IfInString, CurrentLine, MouseUpRight
     {
         if reverse = 1
+        {
+            returnValue := 2
             Click, right, down
+        }
         else
+        {
+            returnValue := 4
             Click, right, up
+        }
         Sleep, 100
     }
+    return returnValue
     ;Sleep, %DELAY_TIME%    
 }
