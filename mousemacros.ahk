@@ -12,21 +12,24 @@ resolution := getDislplayResolutionString()
 
 recordingsDir := A_ScriptDir "\recordings\" resolution
 
-DELAY_TIME = 100
-SetTimer, WatchKeys, %DELAY_TIME%
+DELAY_TIME = 10
 
 if (!a_iscompiled) {
 	Menu, tray, icon, icon.ico,0,1
 }
 
 
-^+9::
+^+F9::
     if (!Recording) {
+        PrevRButtonDown := false
+        PrevLButtonDown := false 
         Recording := true
         Actions := []
         StartTime := A_TickCount
+        SetTimer, WatchKeys, %DELAY_TIME%
         ToolTip, Recording started. Press F1 again to stop recording and save.
     } else {
+        SetTimer, WatchKeys, Off
         Recording := false
         ToolTip,
         ; Specify window title after stopping the recording
@@ -56,7 +59,7 @@ if (!a_iscompiled) {
     }
 return
 
-^+0::
+^+F10::
     WinGetTitle, ActiveWindowTitle, A
     FileNames := []
     FilePaths := {}
@@ -114,12 +117,17 @@ return
     }
 return
 
-
+lastX := "", lastY := ""
 WatchKeys:
     if (Recording) {
         MouseGetPos, mouseX, mouseY
-        Actions.Push("MouseMove " mouseX " " mouseY)
 
+        If (mouseX != lastX or mouseY != lastY)
+        {
+            Actions.Push("MouseMove " mouseX " " mouseY)
+            lastX := mouseX
+            lastY := mouseY
+        }
         if GetKeyState("LButton", "P") {
             if (!PrevLButtonDown) {  ; Only push down action if it wasn't down before
                 Actions.Push("MouseDownLeft")
@@ -180,6 +188,8 @@ RunRecording(filePath, reverse := false) {
                 leftMouseDown := 0
             else if returnValue = 4
                 rightMouseDown := 0
+
+            Sleep, %DELAY_TIME%
         }
     }
     else  ; Loop in normal order
@@ -196,6 +206,8 @@ RunRecording(filePath, reverse := false) {
                 leftMouseDown := 0
             else if returnValue = 4
                 rightMouseDown := 0
+            
+            Sleep, %DELAY_TIME%
         }
     }
     if leftMouseDown = 1
@@ -225,7 +237,6 @@ HandleCommand(CurrentLine, reverse := false) {
             returnValue := 3 
             Click, down
         }
-        Sleep, 100
     }
     IfInString, CurrentLine, MouseDownRight
     {
