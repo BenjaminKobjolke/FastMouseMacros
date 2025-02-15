@@ -7,15 +7,13 @@ getActiveProcessName() {
     return ProcessName
 }
 
-getDislplayResolutionString() {
-        ; Get screen width
+getScreenDimensions() {
     SysGet, ScreenWidth, 0
-    ; Get screen height
     SysGet, ScreenHeight, 1
+    return {"width": ScreenWidth, "height": ScreenHeight}
+}
 
-    ; Display the resolution in a message box
-    ;M sgBox, The current screen resolution is %ScreenWidth% x %ScreenHeight%.
-    returnString := ScreenWidth . "x" . ScreenHeight
-
-    return returnString
+getActiveWindowDimensions() {
+    WinGetPos,,, width, height, A
+    return {"width": width, "height": height}
 }

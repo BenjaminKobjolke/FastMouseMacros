@@ -11,9 +11,10 @@ CoordMode, Mouse, Window
 global DELAY_TIME := 10  ; Delay between actions
 
 ; Include required modules
+#include %A_ScriptDir%\github_modules\AutoHotkey-JSON\JSON.ahk
 #include %A_ScriptDir%\lib\ComputerInfos.ahk
-resolution := getDislplayResolutionString()
-global recordingsDir := A_ScriptDir "\recordings\" resolution
+resolution := getScreenDimensions()
+global recordingsDir := A_ScriptDir "\recordings"
 
 ; Include functionality modules
 #include %A_ScriptDir%\lib\keyboard.ahk

@@ -2,13 +2,15 @@
 global LastSelectedIndex := ""
 
 ^+F10::
-
     WinGetTitle, ActiveWindowTitle, A
     FileNames := []
     FilePaths := {}
+    SimilarRecordings := []
 
-    ; Get current process name
+    ; Get current process name and dimensions
     ProcessName := getActiveProcessName()
+    CurrentScreen := getScreenDimensions()
+    CurrentWindow := getActiveWindowDimensions()
 
     ; Loop through all subfolders in the recordings directory
     Loop, %recordingsDir%\*, 2D
@@ -17,37 +19,51 @@ global LastSelectedIndex := ""
         isProcessBased := InStr(folderName, "process_") = 1
         isTitleBased := InStr(folderName, "title_") = 1
 
-        if (isProcessBased) {
-            ; For process-based folders, compare with current process
-            folderProcessName := SubStr(folderName, 9) ; Remove "process_" prefix
-            if (folderProcessName = ProcessName) {
-                Loop, Files, %recordingsDir%\%folderName%\*.txt
+        if (isProcessBased || isTitleBased) {
+            ; Get the target name from folder
+            targetName := isProcessBased 
+                ? SubStr(folderName, 9)  ; Remove "process_" prefix
+                : SubStr(folderName, 7)  ; Remove "title_" prefix
+
+            ; Check if this folder matches current window
+            isMatch := isProcessBased 
+                ? (targetName = ProcessName)
+                : InStr(ActiveWindowTitle, targetName)
+
+            if (isMatch) {
+                ; Check recordings in this folder
+                Loop, Files, %recordingsDir%\%folderName%\*.json
                 {
-                    FileRead, FileContent, %A_LoopFileLongPath%
-                    ; Remove .txt extension and add [Process] at the end
-                    baseName := SubStr(A_LoopFileName, 1, StrLen(A_LoopFileName)-4)
-                    FileNames.Push(baseName " [Process]")
-                    FilePaths.Push(A_LoopFileFullPath)
-                }
-            }
-        }
-        else if (isTitleBased) {
-            ; For title-based folders, compare with current window title
-            folderTitle := SubStr(folderName, 7) ; Remove "title_" prefix
-            if InStr(ActiveWindowTitle, folderTitle)
-            {
-                Loop, Files, %recordingsDir%\%folderName%\*.txt
-                {
-                    FileRead, FileContent, %A_LoopFileLongPath%
-                    ; Remove .txt extension and add [Title] at the end
-                    baseName := SubStr(A_LoopFileName, 1, StrLen(A_LoopFileName)-4)
-                    FileNames.Push(baseName " [Title]")
-                    FilePaths.Push(A_LoopFileFullPath)
+                    ; Load and parse JSON
+                    FileRead, Content, %A_LoopFileFullPath%
+                    try {
+                        RecordingData := JSON.Load(Content)
+                        
+                        ; Check dimensions match
+                        if (RecordingData["metadata"]["screen"]["width"] = CurrentScreen["width"]
+                            && RecordingData["metadata"]["screen"]["height"] = CurrentScreen["height"]
+                            && RecordingData["metadata"]["window"]["width"] = CurrentWindow["width"]
+                            && RecordingData["metadata"]["window"]["height"] = CurrentWindow["height"]) {
+                            ; Perfect match - add to main list
+                            baseName := SubStr(A_LoopFileName, 1, StrLen(A_LoopFileName)-5)  ; Remove .json
+                            FileNames.Push(baseName " [" RecordingData["metadata"]["storageType"] "]")
+                            FilePaths.Push(A_LoopFileFullPath)
+                        } else {
+                            ; Similar recording with different dimensions - add to similar list
+                            similarRec := Object()
+                            similarRec["name"] := A_LoopFileName
+                            similarRec["screen"] := RecordingData["metadata"]["screen"]
+                            similarRec["window"] := RecordingData["metadata"]["window"]
+                            similarRec["type"] := RecordingData["metadata"]["storageType"]
+                            SimilarRecordings.Push(similarRec)
+                        }
+                    }
                 }
             }
         }
     }
 
+    ; Show matching recordings or similar recordings message
     If (FilePaths.Length() > 0) {
         FileIndex := 1
         FileListStr := ""
@@ -82,8 +98,24 @@ global LastSelectedIndex := ""
             ReleaseAllKeys()  ; Release any held keys after playback
             ToolTip  ; Clear tooltip
         }
+    } else if (SimilarRecordings.Length() > 0) {
+        msg := "No recordings found matching current dimensions:`n"
+            msg .= "Screen: " CurrentScreen["width"] "x" CurrentScreen["height"] "`n"
+            msg .= "Window: " CurrentWindow["width"] "x" CurrentWindow["height"] "`n`n"
+        msg .= "Similar recordings found with different dimensions:`n"
+        for each, rec in SimilarRecordings {
+            msg .= "`n" rec["name"] " [" rec["type"] "]`n"
+            msg .= "- Screen: " rec["screen"]["width"] "x" rec["screen"]["height"] "`n"
+            msg .= "- Window: " rec["window"]["width"] "x" rec["window"]["height"]
+        }
+        ShowDarkMsgBox("No Matching Recordings", msg)
     } else {
-        MsgBox, No recordings found for this window.`nWindow Title: %ActiveWindowTitle%`nProcess Name: %ProcessName%
+        msg := "No recordings found for this window.`n"
+        msg .= "Window Title: " ActiveWindowTitle "`n"
+        msg .= "Process Name: " ProcessName "`n"
+        msg .= "Screen: " CurrentScreen["width"] "x" CurrentScreen["height"] "`n"
+        msg .= "Window: " CurrentWindow["width"] "x" CurrentWindow["height"]
+        ShowDarkMsgBox("No Recordings Found", msg)
     }
     SetTimer, RemoveToolTip, -1000  ; Ensure tooltip is cleared
 return
@@ -93,50 +125,40 @@ RunRecording(filePath, reverse := false) {
     leftMouseDown := 0
     rightMouseDown := 0
     MouseGetPos, xpos, ypos 
-    FileRead, RecordingContent, %filePath%
+    FileRead, Content, %filePath%
 
-    ; Split the content into an array based on new lines
-    LinesArray := StrSplit(RecordingContent, "`n", "`r")
+    ; Parse JSON content
+    try {
+        RecordingData := JSON.Load(Content)
+    } catch e {
+        ShowDarkMsgBox("Error", "Failed to parse recording file: " e)
+        return
+    }
 
-    ; Get the active window info and storage type from the recording
-    ActiveWindowInfo := LinesArray[1]
-    ActiveWindowInfo := StrSplit(ActiveWindowInfo, ": ")
-    ActiveWindowTitle := ActiveWindowInfo[2]
-    ActiveWindowTitle := RegExReplace(ActiveWindowTitle, "\v\s?", "")
-
-    StorageTypeInfo := LinesArray[2]
-    StorageTypeInfo := StrSplit(StorageTypeInfo, ": ")
-    StorageType := StorageTypeInfo[2]
-
-    if (StorageType = "process") {
-        ; For process-based recordings, activate by process name
-        ; Strip .exe extension if it exists in the stored process name
-        ProcessToFind := ActiveWindowTitle
-        if (SubStr(ProcessToFind, -3) = ".exe") {
-            ProcessToFind := SubStr(ProcessToFind, 1, StrLen(ProcessToFind)-4)
-        }
-        WinGet, WindowId,, ahk_exe %ProcessToFind%.exe
+    ; Activate target window
+    if (RecordingData["metadata"]["storageType"] = "process") {
+        targetExe := RecordingData["metadata"]["targetName"] ".exe"
+        WinGet, WindowId,, ahk_exe %targetExe%
         if WindowId {
             WinActivate, ahk_id %WindowId%
         } else {
-            MsgBox, 16, Error, Process >%ActiveWindowTitle%< not found.
+            ShowDarkMsgBox("Error", "Process >" RecordingData["metadata"]["targetName"] "< not found.")
             return
         }
     } else {
-        ; For title-based recordings, activate by window title
-        IfWinExist, %ActiveWindowTitle%
+        targetTitle := RecordingData["metadata"]["targetName"]
+        if WinExist(targetTitle) {
             WinActivate
-        else {
-            MsgBox, 16, Error, Window >%ActiveWindowTitle%< not found.
+        } else {
+            ShowDarkMsgBox("Error", "Window >" targetTitle "< not found.")
             return
         }
     }
 
-    ; Loop over each line starting from the second line
-    if (reverse = true)  ; Loop in reverse
-    {
-        Loop, % LinesArray.MaxIndex()
-        {
+    ; Play actions
+    actions := RecordingData["recording"]["actions"]
+    if (reverse) {
+        Loop % actions.Length() {
             ; Check if stop hotkey is pressed
             if (GetKeyState("Ctrl") && GetKeyState("Shift") && GetKeyState("F10")) {
                 ReleaseAllKeys()
@@ -145,10 +167,22 @@ RunRecording(filePath, reverse := false) {
                 return
             }
 
-            CurrentIndex := LinesArray.MaxIndex() - A_Index + 1
-            CurrentLine := LinesArray[CurrentIndex]
-            if (!HandleKeyboardCommand(CurrentLine, reverse)) {
-                returnValue := HandleMouseCommand(CurrentLine, reverse)
+            index := actions.Length() - A_Index + 1
+            action := actions[index]
+            if (InStr(action["type"], "Key")) {
+                if (!HandleKeyboardCommand(action["type"] " " action["data"], reverse)) {
+                    returnValue := HandleMouseCommand(action["type"] " " action["data"], reverse)
+                    if returnValue = 1
+                        leftMouseDown := 1
+                    else if returnValue = 2
+                        rightMouseDown := 1
+                    else if returnValue = 3
+                        leftMouseDown := 0
+                    else if returnValue = 4
+                        rightMouseDown := 0
+                }
+            } else {
+                returnValue := HandleMouseCommand(action["type"] " " action["data"], reverse)
                 if returnValue = 1
                     leftMouseDown := 1
                 else if returnValue = 2
@@ -160,11 +194,8 @@ RunRecording(filePath, reverse := false) {
             }
             Sleep, %DELAY_TIME%
         }
-    }
-    else  ; Loop in normal order
-    {
-        Loop, % LinesArray.MaxIndex()
-        {
+    } else {
+        Loop % actions.Length() {
             ; Check if stop hotkey is pressed
             if (GetKeyState("Ctrl") && GetKeyState("Shift") && GetKeyState("F10")) {
                 ReleaseAllKeys()
@@ -173,9 +204,21 @@ RunRecording(filePath, reverse := false) {
                 return
             }
 
-            CurrentLine := LinesArray[A_Index]
-            if (!HandleKeyboardCommand(CurrentLine, reverse)) {
-                returnValue := HandleMouseCommand(CurrentLine, reverse)
+            action := actions[A_Index]
+            if (InStr(action["type"], "Key")) {
+                if (!HandleKeyboardCommand(action["type"] " " action["data"], reverse)) {
+                    returnValue := HandleMouseCommand(action["type"] " " action["data"], reverse)
+                    if returnValue = 1
+                        leftMouseDown := 1
+                    else if returnValue = 2
+                        rightMouseDown := 1
+                    else if returnValue = 3
+                        leftMouseDown := 0
+                    else if returnValue = 4
+                        rightMouseDown := 0
+                }
+            } else {
+                returnValue := HandleMouseCommand(action["type"] " " action["data"], reverse)
                 if returnValue = 1
                     leftMouseDown := 1
                 else if returnValue = 2

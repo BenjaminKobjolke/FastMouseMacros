@@ -3,6 +3,8 @@ global Recording := false
 global Actions := []
 global StartTime := 0
 global RecordingProcessName := ""
+global RecordingScreenDimensions := ""
+global RecordingWindowDimensions := ""
 
 ^+F9::
     if (!Recording) {
@@ -17,6 +19,8 @@ global RecordingProcessName := ""
         Actions := []
         StartTime := A_TickCount
         RecordingProcessName := getActiveProcessName()
+        RecordingScreenDimensions := getScreenDimensions()
+        RecordingWindowDimensions := getActiveWindowDimensions()
         SetTimer, WatchKeys, %DELAY_TIME%
         ToolTip, Recording started. Press Ctrl+Shift+F9 to stop and save.
     } else {
@@ -69,8 +73,10 @@ global RecordingProcessName := ""
             ; Remove illegal characters from filename
             RecordingName := RegExReplace(RecordingName, "[\\/:*?""<>|]", "_")
             
-            ; Create directory if it doesn't exist
+            ; Create directories if they don't exist
             try {
+                IfNotExist, %recordingsDir%
+                    FileCreateDir, %recordingsDir%
                 IfNotExist, %recordingPath%
                     FileCreateDir, %recordingPath%
             } catch {
@@ -82,27 +88,21 @@ global RecordingProcessName := ""
             }
             
             ; Full path to the recording file
-            filePath := recordingPath "\" RecordingName ".txt"
+            filePath := recordingPath "\" RecordingName ".json"
             
             ; Try to save the recording
             try {
-                FileAppend, % "Active Window: " ActiveWindowTitle "`n", %filePath%
-                if ErrorLevel {
-                    throw "Failed to write header"
-                }
-                ; Add storage type
-                if (InStr(recordingPath, "\process_")) {
-                    FileAppend, % "Storage Type: process`n", %filePath%
-                } else {
-                    FileAppend, % "Storage Type: title`n", %filePath%
-                }
-                if ErrorLevel {
-                    throw "Failed to write storage type"
-                }
-                FileAppend, % "Start Time: " StartTime "`n", %filePath%
-                if ErrorLevel {
-                    throw "Failed to write start time"
-                }
+                ; Create recording data structure
+                recordingData := Object()
+                recordingData["version"] := "1.0"
+                recordingData["metadata"] := Object()
+                recordingData["metadata"]["storageType"] := InStr(recordingPath, "\process_") ? "process" : "title"
+                recordingData["metadata"]["targetName"] := ActiveWindowTitle
+                recordingData["metadata"]["screen"] := RecordingScreenDimensions
+                recordingData["metadata"]["window"] := RecordingWindowDimensions
+                recordingData["metadata"]["createdAt"] := A_Now
+                recordingData["metadata"]["lastModified"] := A_Now
+
                 ; Clean up the recording by removing trailing KeyDown events
                 lastKeyUpIndex := 0
                 Loop % Actions.Length() {
@@ -111,14 +111,26 @@ global RecordingProcessName := ""
                     }
                 }
 
-                ; Save only actions up to the last KeyUp event
+                ; Process actions into structured format
+                recordingData["recording"] := Object()
+                recordingData["recording"]["actions"] := []
                 Loop % (lastKeyUpIndex ? lastKeyUpIndex : Actions.Length()) {
-                    FileAppend, % Actions[A_Index] "`n", %filePath%
-                    if ErrorLevel {
-                        throw "Failed to write action at index " A_Index
-                    }
+                    action := Actions[A_Index]
+                    actionParts := StrSplit(action, A_Space)
+                    actionObj := Object()
+                    actionObj["type"] := actionParts[1]
+                    if (actionParts.Length() > 1)
+                        actionObj["data"] := actionParts[2]
+                    if (actionParts.Length() > 2)
+                        actionObj["data"] .= " " actionParts[3]
+                    actionObj["timestamp"] := A_Index * DELAY_TIME
+                    recordingData["recording"]["actions"].Push(actionObj)
                 }
-                ToolTip, Recording saved as %RecordingName%.txt
+
+                ; Save as JSON
+                jsonText := JSON.Dump(recordingData, "", 2)  ; Pretty print with 2 spaces
+                FileAppend, %jsonText%, %filePath%
+                ToolTip, Recording saved as %RecordingName%.json
                 Sleep, 1000
                 ToolTip
                 break  ; Exit loop on successful save
