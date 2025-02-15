@@ -2,6 +2,7 @@
 global LastSelectedIndex := ""
 
 ^+F10::
+
     WinGetTitle, ActiveWindowTitle, A
     FileNames := []
     FilePaths := {}
@@ -49,7 +50,7 @@ global LastSelectedIndex := ""
         Loop % FileNames.Length()
             FileListStr .= FileIndex++ ". " FileNames[A_Index] "`n"
 
-        InputBox, SelectedFileIndex, Select Recording , Choose a recording to execute:`n`n%FileListStr%, , , 500, , , , , %LastSelectedIndex%
+        SelectedFileIndex := ShowRecordingSelector(FileListStr, LastSelectedIndex)
 
         If (SelectedFileIndex) {
             LastSelectedIndex := SelectedFileIndex  ; Store the selection for next time
@@ -132,6 +133,14 @@ RunRecording(filePath, reverse := false) {
     {
         Loop, % LinesArray.MaxIndex()
         {
+            ; Check if stop hotkey is pressed
+            if (GetKeyState("Ctrl") && GetKeyState("Shift") && GetKeyState("F10")) {
+                ReleaseAllKeys()
+                ToolTip, Playback stopped
+                SetTimer, RemoveToolTip, -1000
+                return
+            }
+
             CurrentIndex := LinesArray.MaxIndex() - A_Index + 1
             CurrentLine := LinesArray[CurrentIndex]
             if (!HandleKeyboardCommand(CurrentLine, reverse)) {
@@ -152,6 +161,14 @@ RunRecording(filePath, reverse := false) {
     {
         Loop, % LinesArray.MaxIndex()
         {
+            ; Check if stop hotkey is pressed
+            if (GetKeyState("Ctrl") && GetKeyState("Shift") && GetKeyState("F10")) {
+                ReleaseAllKeys()
+                ToolTip, Playback stopped
+                SetTimer, RemoveToolTip, -1000
+                return
+            }
+
             CurrentLine := LinesArray[A_Index]
             if (!HandleKeyboardCommand(CurrentLine, reverse)) {
                 returnValue := HandleMouseCommand(CurrentLine, reverse)

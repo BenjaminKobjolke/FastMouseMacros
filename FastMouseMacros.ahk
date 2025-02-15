@@ -20,6 +20,7 @@ global recordingsDir := A_ScriptDir "\recordings\" resolution
 #include %A_ScriptDir%\lib\mouse.ahk
 #include %A_ScriptDir%\lib\recording.ahk
 #include %A_ScriptDir%\lib\playback.ahk
+#include %A_ScriptDir%\lib\gui.ahk
 
 ; Set up tray icon
 if (!a_iscompiled) {
