@@ -1,3 +1,12 @@
+getActiveProcessName() {
+    WinGet, ProcessName, ProcessName, A
+    ; Strip .exe extension if it exists
+    if (SubStr(ProcessName, -3) = ".exe") {
+        ProcessName := SubStr(ProcessName, 1, StrLen(ProcessName)-4)
+    }
+    return ProcessName
+}
+
 getDislplayResolutionString() {
         ; Get screen width
     SysGet, ScreenWidth, 0

@@ -2,6 +2,7 @@
 global Recording := false
 global Actions := []
 global StartTime := 0
+global RecordingProcessName := ""
 
 ^+F9::
     if (!Recording) {
@@ -15,6 +16,7 @@ global StartTime := 0
         Recording := true
         Actions := []
         StartTime := A_TickCount
+        RecordingProcessName := getActiveProcessName()
         SetTimer, WatchKeys, %DELAY_TIME%
         ToolTip, Recording started. Press Ctrl+Shift+F9 to stop and save.
     } else {
@@ -30,12 +32,30 @@ global StartTime := 0
         ToolTip,
         ; Keep trying to save until success or user cancels
         Loop {
-            ; Specify window title after stopping the recording
-            WinGetTitle, DefaultWindowTitle, A
-            InputBox, CustomWindowTitle, Specify Window Title, Modify the window title if required:, , , , , , , , %DefaultWindowTitle%
-            if (ErrorLevel)  ; If user cancels the InputBox
+            ; Ask user for storage preference
+            MsgBox, 3, Storage Type, Store recording based on:`nYes = Window Title`nNo = Process Name
+            IfMsgBox Yes
+            {
+                ; Window title based (original behavior)
+                WinGetTitle, DefaultWindowTitle, A
+                InputBox, CustomWindowTitle, Specify Window Title, Modify the window title if required:, , , , , , , , %DefaultWindowTitle%
+                if (ErrorLevel)  ; If user cancels the InputBox
+                    return
+                ActiveWindowTitle := Trim(CustomWindowTitle)
+                recordingPath := recordingsDir "\title_" ActiveWindowTitle
+            }
+            IfMsgBox No
+            {
+                ; Process name based
+                InputBox, CustomProcessName, Specify Process Name, Modify the process name if required:, , , , , , , , %RecordingProcessName%
+                if (ErrorLevel)  ; If user cancels the InputBox
+                    return
+                ProcessName := Trim(CustomProcessName)
+                ActiveWindowTitle := ProcessName
+                recordingPath := recordingsDir "\process_" ProcessName
+            }
+            IfMsgBox Cancel
                 return
-            ActiveWindowTitle := Trim(CustomWindowTitle)
 
             InputBox, RecordingName, Save Recording, Enter a name for the recording (illegal characters will be removed):
             if (ErrorLevel)  ; If user cancels the InputBox
@@ -51,7 +71,6 @@ global StartTime := 0
             RecordingName := RegExReplace(RecordingName, "[\\/:*?""<>|]", "_")
             
             ; Create directory if it doesn't exist
-            recordingPath := recordingsDir "\" ActiveWindowTitle
             try {
                 IfNotExist, %recordingPath%
                     FileCreateDir, %recordingPath%
@@ -71,6 +90,15 @@ global StartTime := 0
                 FileAppend, % "Active Window: " ActiveWindowTitle "`n", %filePath%
                 if ErrorLevel {
                     throw "Failed to write header"
+                }
+                ; Add storage type
+                if (InStr(recordingPath, "\process_")) {
+                    FileAppend, % "Storage Type: process`n", %filePath%
+                } else {
+                    FileAppend, % "Storage Type: title`n", %filePath%
+                }
+                if ErrorLevel {
+                    throw "Failed to write storage type"
                 }
                 FileAppend, % "Start Time: " StartTime "`n", %filePath%
                 if ErrorLevel {
