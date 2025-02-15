@@ -1,6 +1,30 @@
-# MouseMacros
+# FastMouseMacros
 
 A tool for recording and playing back mouse and keyboard actions.
+
+## Workflow
+
+1. Recording:
+
+   - Press Ctrl+Shift+F9 to start recording
+   - Perform the actions you want to record (mouse movements, clicks, keyboard inputs)
+   - Press Ctrl+Shift+F9 again to stop recording
+   - Choose storage type:
+     - Window Title: Recording will be matched to windows with similar titles
+     - Process Name: Recording will be matched to any window of the same application
+   - Enter a name for your recording
+
+2. Playback:
+
+   - Go to the window where you want to play the recording
+   - Press Ctrl+Shift+F10 to show available recordings
+   - Enter the number of the recording you want to play
+   - Add 'r' after the number for reverse playback (e.g., "1r")
+   - Press Ctrl+Shift+F10 again during playback to stop
+
+3. Keyboard-only Recording:
+   - Use Ctrl+Shift+F8 to toggle keyboard recording mode
+   - Useful when you only want to record keyboard inputs
 
 ## Hotkeys
 

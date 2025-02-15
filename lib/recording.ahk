@@ -33,32 +33,31 @@ global RecordingProcessName := ""
         ; Keep trying to save until success or user cancels
         Loop {
             ; Ask user for storage preference
-            MsgBox, 3, Storage Type, Store recording based on:`nYes = Window Title`nNo = Process Name
-            IfMsgBox Yes
-            {
-                ; Window title based (original behavior)
-                WinGetTitle, DefaultWindowTitle, A
-                InputBox, CustomWindowTitle, Specify Window Title, Modify the window title if required:, , , , , , , , %DefaultWindowTitle%
-                if (ErrorLevel)  ; If user cancels the InputBox
-                    return
-                ActiveWindowTitle := Trim(CustomWindowTitle)
-                recordingPath := recordingsDir "\title_" ActiveWindowTitle
-            }
-            IfMsgBox No
-            {
+            StorageType := ShowDarkMsgBox("Storage Type", "Store recording based on:`nWindow Title = Yes`nProcess Name = No", "YesNoCancel")
+            if (StorageType = "No") {
                 ; Process name based
-                InputBox, CustomProcessName, Specify Process Name, Modify the process name if required:, , , , , , , , %RecordingProcessName%
-                if (ErrorLevel)  ; If user cancels the InputBox
+                CustomProcessName := ShowDarkInputBox("Specify Process Name", "Modify the process name if required:", RecordingProcessName)
+                if (!CustomProcessName)  ; If user cancels
                     return
                 ProcessName := Trim(CustomProcessName)
                 ActiveWindowTitle := ProcessName
                 recordingPath := recordingsDir "\process_" ProcessName
             }
-            IfMsgBox Cancel
+            else if (StorageType = "Yes") {
+                ; Window title based (original behavior)
+                WinGetTitle, DefaultWindowTitle, A
+                CustomWindowTitle := ShowDarkInputBox("Specify Window Title", "Modify the window title if required:", DefaultWindowTitle)
+                if (!CustomWindowTitle)  ; If user cancels
+                    return
+                ActiveWindowTitle := Trim(CustomWindowTitle)
+                recordingPath := recordingsDir "\title_" ActiveWindowTitle
+            }
+            else  ; Cancel
                 return
 
-            InputBox, RecordingName, Save Recording, Enter a name for the recording (illegal characters will be removed):
-            if (ErrorLevel)  ; If user cancels the InputBox
+
+            RecordingName := ShowDarkInputBox("Save Recording", "Enter a name for the recording (illegal characters will be removed):")
+            if (!RecordingName)  ; If user cancels
                 return
                 
             if (!RecordingName) {
@@ -75,8 +74,8 @@ global RecordingProcessName := ""
                 IfNotExist, %recordingPath%
                     FileCreateDir, %recordingPath%
             } catch {
-                MsgBox, 5, Error, Failed to create directory: %recordingPath%`n`nWould you like to try again?
-                IfMsgBox Retry
+                RetryResult := ShowDarkMsgBox("Error", "Failed to create directory: " recordingPath "`n`nWould you like to try again?", "RetryCancel")
+                if (RetryResult = "Retry")
                     continue
                 else
                     return
@@ -127,8 +126,8 @@ global RecordingProcessName := ""
                 try {
                     FileDelete, %filePath%  ; Clean up partial file
                 } catch {}
-                MsgBox, 5, Error, Failed to save recording: %e%`n`nWould you like to try again?
-                IfMsgBox Retry
+                RetryResult := ShowDarkMsgBox("Error", "Failed to save recording: " e "`n`nWould you like to try again?", "RetryCancel")
+                if (RetryResult = "Retry")
                     continue
                 else
                     return

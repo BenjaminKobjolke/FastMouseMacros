@@ -24,7 +24,9 @@ global LastSelectedIndex := ""
                 Loop, Files, %recordingsDir%\%folderName%\*.txt
                 {
                     FileRead, FileContent, %A_LoopFileLongPath%
-                    FileNames.Push("[Process] " A_LoopFileName)  ; Add prefix for clarity
+                    ; Remove .txt extension and add [Process] at the end
+                    baseName := SubStr(A_LoopFileName, 1, StrLen(A_LoopFileName)-4)
+                    FileNames.Push(baseName " [Process]")
                     FilePaths.Push(A_LoopFileFullPath)
                 }
             }
@@ -37,7 +39,9 @@ global LastSelectedIndex := ""
                 Loop, Files, %recordingsDir%\%folderName%\*.txt
                 {
                     FileRead, FileContent, %A_LoopFileLongPath%
-                    FileNames.Push("[Title] " A_LoopFileName)  ; Add prefix for clarity
+                    ; Remove .txt extension and add [Title] at the end
+                    baseName := SubStr(A_LoopFileName, 1, StrLen(A_LoopFileName)-4)
+                    FileNames.Push(baseName " [Title]")
                     FilePaths.Push(A_LoopFileFullPath)
                 }
             }
