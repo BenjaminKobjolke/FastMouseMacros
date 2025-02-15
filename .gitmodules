@@ -1,0 +1,3 @@
+[submodule "github_modules/AutoHotkey-JSON"]
+	path = github_modules/AutoHotkey-JSON
+	url = https://github.com/cocobelgica/AutoHotkey-JSON.git

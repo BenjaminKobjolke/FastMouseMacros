@@ -1,6 +1,18 @@
 # FastMouseMacros
 
-A tool for recording and playing back mouse and keyboard actions.
+A tool for recording and playing back mouse and keyboard actions on Windows.
+
+## Requirements
+
+1. Windows operating system
+2. AutoHotkey v1.1 installed (download from [autohotkey.com](https://www.autohotkey.com/))
+
+## Installation
+
+1. Install AutoHotkey v1.1 if you haven't already
+2. Download or clone this repository
+3. Double-click `FastMouseMacros.ahk` to start the tool
+4. The tool will run in the background with an icon in the system tray
 
 ## Workflow
 
