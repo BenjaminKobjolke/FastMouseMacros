@@ -1,6 +1,19 @@
 ; Global variable to store last selected recording
 global LastSelectedIndex := ""
 
+; Helper function to check if dimensions match
+isDimensionsMatch(recordingData, currentScreen, currentWindow) {
+    return (recordingData["metadata"]["screen"]["width"] = currentScreen["width"]
+        && recordingData["metadata"]["screen"]["height"] = currentScreen["height"]
+        && recordingData["metadata"]["window"]["width"] = currentWindow["width"]
+        && recordingData["metadata"]["window"]["height"] = currentWindow["height"])
+}
+
+; Helper function to check if stop hotkey is pressed
+isStopHotkeyPressed() {
+    return (GetKeyState("Ctrl") && GetKeyState("Shift") && GetKeyState("F10"))
+}
+
 ^+F10::
     WinGetTitle, ActiveWindowTitle, A
     FileNames := []
@@ -44,10 +57,7 @@ global LastSelectedIndex := ""
                     }
                     
                     ; Check dimensions match
-                    if (RecordingData["metadata"]["screen"]["width"] = CurrentScreen["width"]
-                        && RecordingData["metadata"]["screen"]["height"] = CurrentScreen["height"]
-                        && RecordingData["metadata"]["window"]["width"] = CurrentWindow["width"]
-                        && RecordingData["metadata"]["window"]["height"] = CurrentWindow["height"]) {
+                    if (isDimensionsMatch(RecordingData, CurrentScreen, CurrentWindow)) {
                         ; Perfect match - add to main list
                         baseName := SubStr(A_LoopFileName, 1, StrLen(A_LoopFileName)-5)  ; Remove .json
                         FileNames.Push(baseName " [" RecordingData["metadata"]["storageType"] "]")
@@ -163,7 +173,7 @@ RunRecording(filePath, reverse := false) {
     if (reverse) {
         Loop % actions.Length() {
             ; Check if stop hotkey is pressed
-            if (GetKeyState("Ctrl") && GetKeyState("Shift") && GetKeyState("F10")) {
+            if (isStopHotkeyPressed()) {
                 ReleaseAllKeys()
                 ToolTip, Playback stopped
                 SetTimer, RemoveToolTip, -1000
@@ -200,7 +210,7 @@ RunRecording(filePath, reverse := false) {
     } else {
         Loop % actions.Length() {
             ; Check if stop hotkey is pressed
-            if (GetKeyState("Ctrl") && GetKeyState("Shift") && GetKeyState("F10")) {
+            if (isStopHotkeyPressed()) {
                 ReleaseAllKeys()
                 ToolTip, Playback stopped
                 SetTimer, RemoveToolTip, -1000
