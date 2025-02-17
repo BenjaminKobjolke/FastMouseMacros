@@ -38,25 +38,28 @@ global LastSelectedIndex := ""
                     FileRead, Content, %A_LoopFileFullPath%
                     try {
                         RecordingData := JSON.Load(Content)
-                        
-                        ; Check dimensions match
-                        if (RecordingData["metadata"]["screen"]["width"] = CurrentScreen["width"]
-                            && RecordingData["metadata"]["screen"]["height"] = CurrentScreen["height"]
-                            && RecordingData["metadata"]["window"]["width"] = CurrentWindow["width"]
-                            && RecordingData["metadata"]["window"]["height"] = CurrentWindow["height"]) {
-                            ; Perfect match - add to main list
-                            baseName := SubStr(A_LoopFileName, 1, StrLen(A_LoopFileName)-5)  ; Remove .json
-                            FileNames.Push(baseName " [" RecordingData["metadata"]["storageType"] "]")
-                            FilePaths.Push(A_LoopFileFullPath)
-                        } else {
-                            ; Similar recording with different dimensions - add to similar list
-                            similarRec := Object()
-                            similarRec["name"] := A_LoopFileName
-                            similarRec["screen"] := RecordingData["metadata"]["screen"]
-                            similarRec["window"] := RecordingData["metadata"]["window"]
-                            similarRec["type"] := RecordingData["metadata"]["storageType"]
-                            SimilarRecordings.Push(similarRec)
-                        }
+                    } catch e {
+                        ShowDarkMsgBox("Error", "Failed to parse recording: " e)
+                        continue
+                    }
+                    
+                    ; Check dimensions match
+                    if (RecordingData["metadata"]["screen"]["width"] = CurrentScreen["width"]
+                        && RecordingData["metadata"]["screen"]["height"] = CurrentScreen["height"]
+                        && RecordingData["metadata"]["window"]["width"] = CurrentWindow["width"]
+                        && RecordingData["metadata"]["window"]["height"] = CurrentWindow["height"]) {
+                        ; Perfect match - add to main list
+                        baseName := SubStr(A_LoopFileName, 1, StrLen(A_LoopFileName)-5)  ; Remove .json
+                        FileNames.Push(baseName " [" RecordingData["metadata"]["storageType"] "]")
+                        FilePaths.Push(A_LoopFileFullPath)
+                    } else {
+                        ; Similar recording with different dimensions - add to similar list
+                        similarRec := Object()
+                        similarRec["name"] := A_LoopFileName
+                        similarRec["screen"] := RecordingData["metadata"]["screen"]
+                        similarRec["window"] := RecordingData["metadata"]["window"]
+                        similarRec["type"] := RecordingData["metadata"]["storageType"]
+                        SimilarRecordings.Push(similarRec)
                     }
                 }
             }

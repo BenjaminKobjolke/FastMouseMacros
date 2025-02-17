@@ -1,0 +1,45 @@
+# AutoHotkey Syntax Rules
+
+## Object Access
+
+- Use bracket notation for object properties, not dot notation
+- CORRECT: obj["property"]
+- WRONG: obj.property
+
+## Object Creation
+
+- Use Object() to create new objects, not {}
+- CORRECT: myObj := Object()
+- WRONG: myObj := {}
+
+## Arrays
+
+- Use [] for arrays (this is supported)
+- CORRECT: myArray := []
+
+## Variables in Commands
+
+- When using variables in AutoHotkey commands, wrap them in %%
+- Don't use % for expressions
+- CORRECT: WinGet, WindowId,, ahk_exe %targetExe%
+- WRONG: WinGet, WindowId,, % targetExe
+
+## String Concatenation in Commands
+
+- For commands that need concatenated strings, store in variable first
+- CORRECT:
+  targetExe := processName ".exe"
+  WinGet, WindowId,, ahk_exe %targetExe%
+
+## Window Commands
+
+- WinExist and similar commands don't use % for variables
+- CORRECT: if WinExist(targetTitle)
+- WRONG: if WinExist(%targetTitle%)
+
+## Common Mistakes to Avoid
+
+1. Don't use % in WinExist/WinActivate parameters
+2. Always store concatenated strings in variables before using in commands
+3. Use bracket notation for all object property access
+4. Remember to use %% for variables in command parameters

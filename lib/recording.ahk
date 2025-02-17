@@ -34,32 +34,42 @@ global RecordingWindowDimensions := ""
         
         ReleaseAllKeys()  ; Release any keys that might still be held down
         ToolTip,
+        ; Ask user for storage preference
+        StorageType := ShowDarkMsgBox("Storage Type", "Store recording based on:`nWindow Title = Yes`nProcess Name = No", "YesNoCancel")
+        if (StorageType = "No") {
+            ; Process name based
+            CustomProcessName := ShowDarkInputBox("Specify Process Name", "Modify the process name if required:", RecordingProcessName)
+            if (!CustomProcessName)  ; If user cancels
+                return
+            ProcessName := Trim(CustomProcessName)
+            ActiveWindowTitle := ProcessName
+            recordingPath := recordingsDir "\process_" ProcessName
+        }
+        else if (StorageType = "Yes") {
+            ; Window title based (original behavior)
+            WinGetTitle, DefaultWindowTitle, A
+            CustomWindowTitle := ShowDarkInputBox("Specify Window Title", "Modify the window title if required:", DefaultWindowTitle)
+            if (!CustomWindowTitle)  ; If user cancels
+                return
+            ActiveWindowTitle := Trim(CustomWindowTitle)
+            recordingPath := recordingsDir "\title_" ActiveWindowTitle
+        }
+        else  ; Cancel
+            return
+
+        ; Create directories if they don't exist
+        try {
+            IfNotExist, %recordingsDir%
+                FileCreateDir, %recordingsDir%
+            IfNotExist, %recordingPath%
+                FileCreateDir, %recordingPath%
+        } catch {
+            ShowDarkMsgBox("Error", "Failed to create directory: " recordingPath)
+            return
+        }
+
         ; Keep trying to save until success or user cancels
         Loop {
-            ; Ask user for storage preference
-            StorageType := ShowDarkMsgBox("Storage Type", "Store recording based on:`nWindow Title = Yes`nProcess Name = No", "YesNoCancel")
-            if (StorageType = "No") {
-                ; Process name based
-                CustomProcessName := ShowDarkInputBox("Specify Process Name", "Modify the process name if required:", RecordingProcessName)
-                if (!CustomProcessName)  ; If user cancels
-                    return
-                ProcessName := Trim(CustomProcessName)
-                ActiveWindowTitle := ProcessName
-                recordingPath := recordingsDir "\process_" ProcessName
-            }
-            else if (StorageType = "Yes") {
-                ; Window title based (original behavior)
-                WinGetTitle, DefaultWindowTitle, A
-                CustomWindowTitle := ShowDarkInputBox("Specify Window Title", "Modify the window title if required:", DefaultWindowTitle)
-                if (!CustomWindowTitle)  ; If user cancels
-                    return
-                ActiveWindowTitle := Trim(CustomWindowTitle)
-                recordingPath := recordingsDir "\title_" ActiveWindowTitle
-            }
-            else  ; Cancel
-                return
-
-
             RecordingName := ShowDarkInputBox("Save Recording", "Enter a name for the recording (illegal characters will be removed):")
             if (!RecordingName)  ; If user cancels
                 return
@@ -73,22 +83,23 @@ global RecordingWindowDimensions := ""
             ; Remove illegal characters from filename
             RecordingName := RegExReplace(RecordingName, "[\\/:*?""<>|]", "_")
             
-            ; Create directories if they don't exist
-            try {
-                IfNotExist, %recordingsDir%
-                    FileCreateDir, %recordingsDir%
-                IfNotExist, %recordingPath%
-                    FileCreateDir, %recordingPath%
-            } catch {
-                RetryResult := ShowDarkMsgBox("Error", "Failed to create directory: " recordingPath "`n`nWould you like to try again?", "RetryCancel")
-                if (RetryResult = "Retry")
-                    continue
-                else
-                    return
-            }
-            
             ; Full path to the recording file
             filePath := recordingPath "\" RecordingName ".json"
+            
+            ; Check if file already exists
+            if FileExist(filePath) {
+                overwrite := ShowDarkMsgBox("File Exists", "File already exists. Do you want to overwrite it?", "YesNoCancel")
+                if (overwrite = "No") {
+                    continue  ; Let user enter a new filename
+                }
+                ; Delete existing file before saving
+                try {
+                    FileDelete, %filePath%
+                } catch e {
+                    ShowDarkMsgBox("Error", "Failed to delete existing file: " e)
+                    continue
+                }
+            }
             
             ; Try to save the recording
             try {
@@ -129,7 +140,9 @@ global RecordingWindowDimensions := ""
 
                 ; Save as JSON
                 jsonText := JSON.Dump(recordingData, "", 2)  ; Pretty print with 2 spaces
-                FileAppend, %jsonText%, %filePath%
+                file := FileOpen(filePath, "w")  ; Open in write mode (creates new file)
+                file.Write(jsonText)
+                file.Close()
                 ToolTip, Recording saved as %RecordingName%.json
                 Sleep, 1000
                 ToolTip
