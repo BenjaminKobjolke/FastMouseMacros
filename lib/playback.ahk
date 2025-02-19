@@ -210,8 +210,7 @@ RunRecording(filePath, reverse := false) {
             }
             Sleep, %DELAY_TIME%
         }
-    } else {
-        Sleep, 1000
+    } else {        
         Loop % actions.Length() {
             ; Check if stop hotkey is pressed
             if (isStopHotkeyPressed()) {
