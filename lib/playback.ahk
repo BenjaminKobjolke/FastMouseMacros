@@ -137,7 +137,7 @@ RunRecording(filePath, reverse := false) {
     ; save current mouse position
     leftMouseDown := 0
     rightMouseDown := 0
-    MouseGetPos, xpos, ypos 
+    MouseGetPos, startX, startY
     FileRead, Content, %filePath%
 
     ; Parse JSON content
@@ -168,9 +168,12 @@ RunRecording(filePath, reverse := false) {
         }
     }
 
+    ; Check if this is a relative recording
+    isRelativeRecording := RecordingData["metadata"]["recordingMode"] = "relative"
+
     ; Play actions
     actions := RecordingData["recording"]["actions"]
-    if (reverse) {
+    if (reverse && !isRelativeRecording) {  ; Don't reverse relative recordings
         Loop % actions.Length() {
             ; Check if stop hotkey is pressed
             if (isStopHotkeyPressed()) {
@@ -208,6 +211,7 @@ RunRecording(filePath, reverse := false) {
             Sleep, %DELAY_TIME%
         }
     } else {
+        Sleep, 1000
         Loop % actions.Length() {
             ; Check if stop hotkey is pressed
             if (isStopHotkeyPressed()) {
@@ -218,7 +222,15 @@ RunRecording(filePath, reverse := false) {
             }
 
             action := actions[A_Index]
-            if (InStr(action["type"], "Key")) {
+            if (isRelativeRecording) {
+                if (action["type"] = "MouseDrag") {
+                    ; For relative recordings, construct the command with all parts
+                    fullCommand := action["type"] " " action["data"]
+                    HandleMouseCommand(fullCommand, false)
+                } else {
+                    HandleMouseCommand(action["type"] " " action["data"], false)
+                }
+            } else if (InStr(action["type"], "Key")) {
                 if (!HandleKeyboardCommand(action["type"] " " action["data"], reverse)) {
                     returnValue := HandleMouseCommand(action["type"] " " action["data"], reverse)
                     if returnValue = 1
@@ -248,7 +260,7 @@ RunRecording(filePath, reverse := false) {
         Click, up
     if rightMouseDown = 1
         Click, right, up
-    MouseMove, %xpos%, %ypos%
+    MouseMove, %startX%, %startY%
     Sleep, %DELAY_TIME%  ; Add delay before releasing keys
     ReleaseAllKeys()  ; Ensure keys are released even if playback is interrupted
     Sleep, %DELAY_TIME%  ; Add delay after releasing keys

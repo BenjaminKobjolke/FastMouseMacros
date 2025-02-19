@@ -39,6 +39,21 @@ HandleMouseRecording() {
 HandleMouseCommand(CurrentLine, reverse) {
     returnValue := 0
 
+    if (InStr(CurrentLine, "MouseDrag")) {
+        parts := StrSplit(CurrentLine, A_Space)
+        ; Format is: "MouseDrag Left targetX targetY"
+        button := parts[2]    ; "Left"
+        targetX := parts[3]   ; absolute target X
+        targetY := parts[4]   ; absolute target Y
+        
+        ; Get current position for debugging
+        CoordMode, Mouse, Screen  ; Switch to screen coordinates
+        MouseGetPos, startX, startY
+        MouseClickDrag, %button%, , , %targetX%, %targetY%, 40
+        CoordMode, Mouse, Window  ; Reset to default
+        return returnValue
+    }
+
     if (InStr(CurrentLine, "MouseMove")) {
         MouseMoveInfo := StrSplit(CurrentLine, A_Space)
         MouseMove, % MouseMoveInfo[2], % MouseMoveInfo[3], 1

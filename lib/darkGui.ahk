@@ -61,6 +61,30 @@ ShowDarkInputBox(title, prompt, default := "") {
     return InputResult
 }
 
+ShowRecordingModeSelector() {
+    global RecordingModeResult
+
+    ; Destroy any existing GUI
+    Gui, RecordingMode:Destroy
+    RecordingModeResult := ""
+
+    ; Create new GUI
+    Gui, RecordingMode:New, +AlwaysOnTop -Caption +Owner
+    Gui, RecordingMode:Color, 1E1E1E, 333333
+    Gui, RecordingMode:Margin, 10, 10
+    Gui, RecordingMode:Font, s14 cWhite, Segoe UI
+    Gui, RecordingMode:Add, Text,, Select Recording Mode:
+    Gui, RecordingMode:Add, Radio, vRecordingModeResult Checked, Regular Recording
+    Gui, RecordingMode:Add, Radio,, Relative Mouse Drag Recording
+    Gui, RecordingMode:Add, Button, x10 y+10 w80 gRecordingModeOK, OK
+
+    Gui, RecordingMode:Show,, Recording Mode
+
+    ; Wait for GUI to close
+    WinWaitClose, Recording Mode
+    return RecordingModeResult
+}
+
 ShowDarkMsgBox(title, text, buttons := "OK") {
     global MsgBoxResult
 
@@ -121,6 +145,12 @@ DarkMsgOK:
 return
 
 ; Handle Enter key for all GUIs
+; Button handler for recording mode
+RecordingModeOK:
+    Gui, RecordingMode:Submit
+    Gui, RecordingMode:Destroy
+return
+
 ~Enter::
     if WinActive("Select Recording") {
         Gui, SelectRecording:Submit
@@ -139,6 +169,10 @@ return
         global MsgBoxResult := "Yes"  ; Default to Yes for other message boxes
         Gui, DarkMsg:Destroy
     }
+    else if WinActive("Recording Mode") {
+        Gui, RecordingMode:Submit
+        Gui, RecordingMode:Destroy
+    }
 return
 
 ; Handle Escape key for all GUIs
@@ -151,8 +185,12 @@ return
         Gui, DarkInput:Destroy
         InputResult := ""
     }
-        else if WinActive("Storage Type") {
+    else if WinActive("Storage Type") {
         Gui, DarkMsg:Destroy
         MsgBoxResult := "Cancel"
+    }
+    else if WinActive("Recording Mode") {
+        Gui, RecordingMode:Destroy
+        RecordingModeResult := ""
     }
 return
