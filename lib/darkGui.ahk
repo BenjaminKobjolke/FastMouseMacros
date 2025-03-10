@@ -151,14 +151,16 @@ RecordingModeOK:
     Gui, RecordingMode:Destroy
 return
 
-~Enter::
+$Enter::
     if WinActive("Select Recording") {
         Gui, SelectRecording:Submit
         Gui, SelectRecording:Destroy
+        return  ; Prevent Enter from passing through
     }
     else if WinActive("Input Required") {
         Gui, DarkInput:Submit
         Gui, DarkInput:Destroy
+        return  ; Prevent Enter from passing through
     }
     else if WinActive("Storage Type") {
         WinGetTitle, CurrentTitle, A
@@ -168,11 +170,20 @@ return
         }
         global MsgBoxResult := "Yes"  ; Default to Yes for other message boxes
         Gui, DarkMsg:Destroy
+        return  ; Prevent Enter from passing through
     }
     else if WinActive("Recording Mode") {
         Gui, RecordingMode:Submit
         Gui, RecordingMode:Destroy
+        return  ; Prevent Enter from passing through
     }
+    else if WinActive("No Recordings Found") || WinActive("No Matching Recordings") {
+        global MsgBoxResult := "OK"
+        Gui, DarkMsg:Destroy
+        return  ; Prevent Enter from passing through
+    }
+    ; If none of the GUIs are active, pass the Enter key through
+    Send, {Enter}
 return
 
 ; Handle Escape key for all GUIs
@@ -192,5 +203,9 @@ return
     else if WinActive("Recording Mode") {
         Gui, RecordingMode:Destroy
         RecordingModeResult := ""
+    }
+    else if WinActive("No Recordings Found") || WinActive("No Matching Recordings") {
+        Gui, DarkMsg:Destroy
+        MsgBoxResult := "OK"
     }
 return
