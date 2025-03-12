@@ -49,6 +49,8 @@ HandleMouseCommand(CurrentLine, reverse) {
         ; Get current position for debugging
         CoordMode, Mouse, Screen  ; Switch to screen coordinates
         MouseGetPos, startX, startY
+		Click, down
+		Sleep, %DELAY_TIME%
         MouseClickDrag, %button%, , , %targetX%, %targetY%, 40
         CoordMode, Mouse, Window  ; Reset to default
         return returnValue
