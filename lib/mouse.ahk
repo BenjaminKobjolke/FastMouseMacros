@@ -50,8 +50,9 @@ HandleMouseCommand(CurrentLine, reverse) {
         CoordMode, Mouse, Screen  ; Switch to screen coordinates
         MouseGetPos, startX, startY
 		Click, down
-		Sleep, %DELAY_TIME%
-        MouseClickDrag, %button%, , , %targetX%, %targetY%, 40
+		Sleep, 300		
+        MouseMove, %targetX%, %targetY%, 80
+		Click, up
         CoordMode, Mouse, Window  ; Reset to default
         return returnValue
     }
